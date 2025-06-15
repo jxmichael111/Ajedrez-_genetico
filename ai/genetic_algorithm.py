@@ -4,37 +4,68 @@ import copy
 import pickle
 import os
 import matplotlib.pyplot as plt
+import numpy as np  
 
 class Individual:
-    def __init__(self, weights):
-        self.weights = weights  # Lista de pesos
+    def __init__(self, layer_sizes=None):
+        self.layer_sizes = layer_sizes or [769, 64, 32, 1]
+        self.weights = []
+        self.biases = []
         self.fitness = 0.0
 
+        for i in range(len(self.layer_sizes) - 1):
+            input_size = self.layer_sizes[i]
+            output_size = self.layer_sizes[i + 1]
+            w = np.random.randn(output_size, input_size) * 0.1
+            b = np.random.randn(output_size) * 0.1
+            self.weights.append(w)
+            self.biases.append(b)
+
     def evaluate(self, input_vector):
-        return sum(w * x for w, x in zip(self.weights, input_vector))
+        x = input_vector
+        for w, b in zip(self.weights, self.biases):
+            x = np.tanh(np.dot(w, x) + b)
+        return x[0]  # Output final: escalar
 
     def mutate(self, mutation_rate=0.1):
-        for i in range(len(self.weights)):
-            if random.random() < mutation_rate:
-                self.weights[i] += random.uniform(-1.0, 1.0)
+        for l in range(len(self.weights)):
+            mutation_mask = np.random.rand(*self.weights[l].shape) < mutation_rate
+            self.weights[l] += mutation_mask * np.random.uniform(-1.0, 1.0, self.weights[l].shape)
+
+            mutation_mask_b = np.random.rand(*self.biases[l].shape) < mutation_rate
+            self.biases[l] += mutation_mask_b * np.random.uniform(-1.0, 1.0, self.biases[l].shape)
 
     def crossover(self, other):
-        child_weights = []
-        for w1, w2 in zip(self.weights, other.weights):
-            child_weights.append(random.choice([w1, w2]))
-        return Individual(child_weights)
+        child = Individual(self.layer_sizes)
+        for i in range(len(self.weights)):
+            mask = np.random.rand(*self.weights[i].shape) < 0.5
+            child.weights[i] = np.where(mask, self.weights[i], other.weights[i])
+
+            mask_b = np.random.rand(*self.biases[i].shape) < 0.5
+            child.biases[i] = np.where(mask_b, self.biases[i], other.biases[i])
+        return child
+
+    def get_activations(self, input_vector):
+        activations = []
+        x = input_vector
+        for w, b in zip(self.weights, self.biases):
+            x = np.tanh(np.dot(w, x) + b)
+            activations.append(x)
+        return activations
 
 class GeneticAlgorithm:
-    def __init__(self, population_size, mutation_rate, crossover_rate, gene_length, fitness_function, save_path):
+    def __init__(self, population_size, mutation_rate, crossover_rate, fitness_function, save_path, layer_sizes=None):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
-        self.gene_length = gene_length
         self.fitness_function = fitness_function
+        self.save_path = save_path
+        self.layer_sizes = layer_sizes or [769, 64, 32, 1]
+
         self.population = []
         self.generation = 0
         self.best_fitness_history = []
-        self.save_path = save_path
+
         self._load_or_initialize()
 
     def _load_or_initialize(self):
@@ -46,7 +77,7 @@ class GeneticAlgorithm:
                 self.best_fitness_history = data["fitness_history"]
                 print(f"Continuando desde generación {self.generation}")
         else:
-            self.population = [Individual([random.uniform(-1, 1) for _ in range(self.gene_length)]) for _ in range(self.population_size)]
+            self.population = [Individual(layer_sizes=self.layer_sizes) for _ in range(self.population_size)]
 
     def save_state(self):
         data = {
@@ -76,7 +107,6 @@ class GeneticAlgorithm:
         if total == 0:
             return random.sample(self.population, 2)
         return random.choices(self.population, weights=weights, k=2)
-
 
     def evolve(self):
         self.evaluate_fitness()

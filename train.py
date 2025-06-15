@@ -4,6 +4,9 @@ from ai.evaluation import evaluate_board
 from game.board import Board
 import pickle
 
+# Arquitectura de la red neuronal: 769 entradas → 64 → 32 → 1 salida
+LAYER_SIZES = [769, 64, 32, 1]
+
 def fitness_function_white(individual):
     board = Board()
     board.current_turn = 'white'
@@ -20,10 +23,11 @@ def train_ai(fitness_fn, save_name, color_label):
         population_size=50,
         mutation_rate=0.1,
         crossover_rate=0.7,
-        gene_length=64*12 + 1,  # 769 genes (con el turno incluido)
         fitness_function=fitness_fn,
-        save_path=save_name
+        save_path=save_name,
+        layer_sizes=LAYER_SIZES  # ✅ Red multicapa en lugar de gene_length
     )
+
     generations = 100
     for gen in range(generations):
         ga.evolve()
