@@ -99,7 +99,10 @@ class GeneticAlgorithm:
 
     def evaluate_fitness(self):
         for individual in self.population:
-            individual.fitness = self.fitness_function(individual)
+            base_fitness = self.fitness_function(individual)
+            noise = np.random.normal(0, 0.01)  # ruido leve
+            individual.fitness = base_fitness + noise
+
 
     def select_parents(self):
         weights = [ind.fitness for ind in self.population]

@@ -1,8 +1,12 @@
+#game/board.py
 from game.pieces import Piece
-
+from utils.fen import load_fen
 class Board:
-    def __init__(self):
-        self.board = self.create_start_position()
+    def __init__(self, fen=None):
+        if fen:
+            self.board = load_fen(fen)
+        else:
+            self.board = self.create_start_position()
         self.current_turn = 'white'
         self.history = []
 
